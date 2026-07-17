@@ -1,0 +1,12 @@
+{
+  "name": "fleetpro-gps-proxy",
+  "version": "1.0.0",
+  "description": "GPS Proxy Server for FleetPro - routes requests to console.onefleet.hk",
+  "main": "server/gpsProxy.js",
+  "scripts": {
+    "start": "node server/gpsProxy.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

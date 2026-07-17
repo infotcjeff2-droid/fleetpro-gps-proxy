@@ -1,0 +1,5 @@
+[node]
+version = "18"
+
+[start]
+cmd = "node server/gpsProxy.js"
