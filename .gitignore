@@ -1,4 +1,5 @@
-node_modules/
-dist/
+# GPS 代理 session（含 JSESSION）一律不入版本控制
+server/session.json
+server/session.json.enc
+server/proxy.log
 .env
-*.log
