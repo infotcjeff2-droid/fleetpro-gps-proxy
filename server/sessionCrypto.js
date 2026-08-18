@@ -11,22 +11,23 @@
  *
  * 檔案格式：
  *   {
- *     "v": 1,
- *     "salt": "<base64>",
- *     "iv": "<base64>",
- *     "tag": "<base64>",
- *     "data": "<base64>"
+ *     "v": 1,                    // 格式版本
+ *     "salt": "<base64>",        // 16 bytes salt
+ *     "iv": "<base64>",          // 12 bytes IV
+ *     "tag": "<base64>",         // 16 bytes GCM auth tag
+ *     "data": "<base64>"         // ciphertext
  *   }
  *
  * 金鑰派生：scryptSync(password=salt, salt=user, N=2^15)
+ *   注意：實務建議金鑰為 base64 的 32 bytes；此處亦接受任意字串並強制 32 bytes。
  */
 
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-const ENCRYPTED_FILE = path.join(__dirname, 'session.json.enc');
-const PLAIN_FILE = path.join(__dirname, 'session.json');
+const ENCRYPTED_FILE = path.join(process.env.SESSION_DIR || __dirname, 'session.json.enc');
+const PLAIN_FILE = path.join(process.env.SESSION_DIR || __dirname, 'session.json');
 
 const ALGO = 'aes-256-gcm';
 const KEY_LEN = 32;
@@ -38,6 +39,7 @@ function getMasterKey() {
   const raw = process.env.GPS_SESSION_KEY;
   if (!raw) return null;
 
+  // 優先解析為 base64 的 32 bytes；解析失敗時改用 UTF-8 並 sha256 收斂為 32 bytes
   try {
     const buf = Buffer.from(raw, 'base64');
     if (buf.length === KEY_LEN) return buf;
@@ -55,6 +57,7 @@ function encryptSession(plainObject) {
   const plaintext = Buffer.from(JSON.stringify(plainObject), 'utf-8');
 
   if (!masterKey) {
+    // 開發模式：fallback 明文寫入 session.json
     fs.writeFileSync(PLAIN_FILE, JSON.stringify(plainObject, null, 2));
     return { mode: 'plain' };
   }
@@ -76,6 +79,7 @@ function encryptSession(plainObject) {
   };
 
   fs.writeFileSync(ENCRYPTED_FILE, JSON.stringify(payload, null, 2));
+  // 不再保留明文檔在專案內（避免殘留）
   if (fs.existsSync(PLAIN_FILE)) {
     try { fs.unlinkSync(PLAIN_FILE); } catch (_) {}
   }
@@ -85,8 +89,10 @@ function encryptSession(plainObject) {
 function decryptSession() {
   const masterKey = getMasterKey();
 
+  // 優先讀加密檔
   if (fs.existsSync(ENCRYPTED_FILE)) {
     if (!masterKey) {
+      // 加密檔存在但環境沒有金鑰 → 無法解密
       console.warn('[SessionCrypto] 偵測到加密 session.json.enc，但缺少 GPS_SESSION_KEY，跳過載入。');
       return null;
     }
@@ -110,6 +116,7 @@ function decryptSession() {
     }
   }
 
+  // Fallback：明文檔（相容舊版 / 未加密環境）
   if (fs.existsSync(PLAIN_FILE)) {
     try {
       return JSON.parse(fs.readFileSync(PLAIN_FILE, 'utf-8'));

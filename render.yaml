@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: fleet-gps-proxy
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: server
+    buildCommand: echo "No build step (pure Node.js http server)"
+    startCommand: node gpsProxy.js
+    healthCheckPath: /health
+    autoDeploy: true
+
+    envVars:
+      - key: NODE_VERSION
+        value: 20.18.0
+      - key: GPS_ADMIN_ACCOUNT
+        sync: false
+      - key: GPS_ADMIN_PASSWORD_MD5
+        sync: false
+      - key: GPS_SESSION_KEY
+        generateValue: true
+      - key: SESSION_DIR
+        value: /var/data
+      # 啟動時顯示 proxy 啟動訊息
+      - key: NODE_ENV
+        value: production
+
+    disk:
+      name: proxy-session
+      mountPath: /var/data
+      sizeGB: 1
